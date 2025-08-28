@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".MainActivity"
+        android:background="@color/background"
+        android:fitsSystemWindows="true">
+
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#313c4a"
+            android:gravity="center_horizontal|center_vertical"
+            app:layout_constraintStart_toStartOf="parent"
+            android:paddingTop="10dp"
+            android:id="@+id/linearLayout"
+            app:layout_constraintTop_toBottomOf="@+id/servers"
+            android:layout_marginTop="16dp">
+
+        <ImageView
+                android:layout_width="400dp"
+                android:layout_height="244dp"
+                app:srcCompat="@drawable/world_map"
+                android:id="@+id/imageView"
+                android:scaleType="centerCrop"
+                android:background="#303b4a" />
+
+    </LinearLayout>
+
+    <FrameLayout
+            android:layout_width="200dp"
+            android:layout_height="100dp"
+            android:background="@drawable/half_circle"
+            android:backgroundTint="#303c49"
+            app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:id="@+id/frameLayout2">
+
+    </FrameLayout>
+
+    <ProgressBar
+            style="@style/Widget.AppCompat.ProgressBar"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:id="@+id/status_loading"
+            app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="-100dp"
+            android:indeterminate="true"
+            android:indeterminateTint="#fdd928"
+            android:visibility="invisible" />
+
+    <FrameLayout
+            android:layout_width="370dp"
+            android:layout_height="46dp"
+            app:layout_constraintTop_toTopOf="parent"
+            android:id="@+id/servers"
+            android:layout_marginTop="16dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:background="@drawable/server_slider_bg"
+            android:padding="5dp">
+
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center">
+
+            <ImageView
+                    android:layout_width="10dp"
+                    android:layout_height="20dp"
+                    app:srcCompat="@drawable/flag_null"
+                    android:id="@+id/imageView4"
+                    android:layout_weight="1" />
+
+            <TextView
+                    android:text="FIND BEST SERVER ...."
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:id="@+id/server_name"
+                    android:layout_weight="8"
+                    android:gravity="center_vertical"
+                    android:textColor="#FAFAFA"
+                    android:paddingLeft="10dp"
+                    android:fontFamily="monospace" />
+
+            <TextView
+                    android:text="-"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/ping"
+                    android:layout_weight="1"
+                    android:textColor="#51A767"
+                    android:textAlignment="center"
+                    android:fontFamily="monospace" />
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <FrameLayout
+            android:layout_width="157dp"
+            android:layout_height="157dp"
+            app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:background="@drawable/connect_btn"
+            android:layout_marginTop="-80dp"
+            android:foregroundGravity="center_vertical|center_horizontal"
+            android:id="@+id/connection_btn">
+
+        <ImageView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                app:srcCompat="@drawable/moshak_connection"
+                android:id="@+id/moshak"
+                android:layout_gravity="center" />
+    </FrameLayout>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="86dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toEndOf="@+id/frameLayout2"
+            app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="32dp">
+
+        <TextView
+                android:text="0.00 KB/s"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/upload_speed"
+                android:textColor="#FBFBFB"
+                android:textAlignment="center"
+                android:fontFamily="monospace" />
+
+        <TextView
+                android:text="Upload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/textView3"
+                android:textColor="#9C5CBF"
+                android:textAlignment="center"
+                android:fontFamily="monospace" />
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="86dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toStartOf="@+id/frameLayout2"
+            app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginTop="32dp">
+
+        <TextView
+                android:text="0.00 KB/s"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/download_speed"
+                android:textColor="#FBFBFB"
+                android:textAlignment="center"
+                android:fontFamily="monospace" />
+
+        <TextView
+                android:text="Download"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/textView3"
+                android:textColor="#5cbf72"
+                android:textAlignment="center"
+                android:fontFamily="monospace" />
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@+id/frameLayout2"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginTop="40dp">
+
+        <TextView
+                android:text="Status : "
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/textView8"
+                android:layout_weight="1"
+                android:fontFamily="monospace"
+                android:textColor="#F2F2F2" />
+
+        <TextView
+                android:text="Not Connected"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/status"
+                android:layout_weight="1"
+                android:textColor="#f35149"
+                android:fontFamily="monospace" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/background"
+        android:fitsSystemWindows="true">
+
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_margin="20dp"
+            android:id="@+id/linearLayout2">
+
+        <ProgressBar
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/internet_connectio_check"
+                android:layout_weight="1"
+                android:layout_marginRight="1dp"
+                android:progressBackgroundTint="@color/lighter_bg"
+                android:progressTint="@color/green" />
+
+        <ProgressBar
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/check_servers_ping"
+                android:layout_weight="1"
+                android:layout_marginRight="1dp"
+                android:layout_marginLeft="1dp"
+                android:progressBackgroundTint="@color/lighter_bg"
+                android:progressTint="@color/green" />
+
+        <ProgressBar
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/get_servers"
+                android:layout_weight="1"
+                android:layout_marginLeft="1dp"
+                android:layout_marginRight="1dp"
+                android:progressBackgroundTint="@color/lighter_bg"
+                android:progressTint="@color/green" />
+
+        <ProgressBar
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/load_and_ad"
+                android:layout_weight="1"
+                android:layout_marginLeft="1dp"
+                android:progressBackgroundTint="@color/lighter_bg"
+                android:progressTint="@color/green" />
+    </LinearLayout>
+
+    <TextView
+            android:text="..."
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/splash_status"
+            app:layout_constraintBottom_toTopOf="@+id/linearLayout2"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginBottom="8dp"
+            android:textColor="@color/lighter_bg" />
+
+    <ImageView
+            android:layout_width="211dp"
+            android:layout_height="180dp"
+            app:srcCompat="@drawable/itopvpn_logo"
+            android:id="@+id/imageView3"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/linearLayout2" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

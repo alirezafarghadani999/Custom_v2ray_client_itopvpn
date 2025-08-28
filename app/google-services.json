@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "699893931992",
+    "project_id": "itopvpn-3c5cb",
+    "storage_bucket": "itopvpn-3c5cb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:699893931992:android:b0b56246aa86e36ddfdcad",
+        "android_client_info": {
+          "package_name": "vpn.vray.itopvpn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTO893Bkc9IuSB3dcI-wqoqwn8HEqPEfE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
