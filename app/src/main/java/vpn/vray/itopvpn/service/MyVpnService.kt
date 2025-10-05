@@ -31,6 +31,14 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * A [VpnService] implementation that manages the V2Ray VPN connection.
+ *
+ * This service is responsible for initializing the V2Ray core, setting up the VPN tunnel,
+ * managing the connection lifecycle, and handling foreground service notifications.
+ * It uses a native JNI library (`hevtunnel_jni`) to interface with the low-level
+ * tunneling components.
+ */
 class MyVpnService : VpnService() {
 
     companion object {
@@ -38,9 +46,21 @@ class MyVpnService : VpnService() {
             System.loadLibrary("hevtunnel_jni")
         }
 
+        /**
+         * Starts the native tunnel with the given configuration.
+         * @param configYaml The tunnel configuration in YAML format.
+         * @param tunFd The file descriptor for the TUN interface.
+         * @return An integer status code.
+         */
         @JvmStatic external fun nativeStartTunnel(configYaml: String, tunFd: Int): Int
+
+        /** Stops the native tunnel. */
         @JvmStatic external fun nativeStopTunnel()
+
+        /** Checks if the native tunnel is currently running. */
         @JvmStatic external fun nativeIsRunning(): Boolean
+
+        /** Closes the specified file descriptor. */
         @JvmStatic external fun nativeCloseFd(tunFd: Int)
 
         private const val TAG = "MyVpnService"
@@ -50,9 +70,24 @@ class MyVpnService : VpnService() {
         const val ACTION_START_VPN = "START_VPN"
 
         @Volatile private var serviceInstance: MyVpnService? = null
+
+        /**
+         * Stops the VPN service from an external component.
+         */
         fun stopVpnFromExternal() { serviceInstance?.stopVpnService() }
+
+        /**
+         * Checks if the VPN service is currently running.
+         * @return `true` if the service is active, `false` otherwise.
+         */
         fun isRunning(): Boolean = serviceInstance?.isServiceRunning?.get() == true
 
+        /**
+         * Performs a network ping to a specified URL to check connectivity.
+         * @param url The URL to ping. Defaults to "https://www.google.com".
+         * @param timeoutMs The connection timeout in milliseconds. Defaults to 3000.
+         * @return The latency in milliseconds if successful, or -1 on failure.
+         */
         suspend fun ping(
             url: String = "https://www.google.com",
             timeoutMs: Int = 3000
@@ -89,7 +124,6 @@ class MyVpnService : VpnService() {
         serviceInstance = this
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) createNotificationChannel()
-
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -135,17 +169,19 @@ class MyVpnService : VpnService() {
             isServiceRunning.set(false)
             try { stopForegroundCompat() } catch (_: Throwable) {}
             stopSelf()
-
         }
     }
 
     private var watchdogJob: Job? = null
 
-
+    /**
+     * Checks if a VPN connection is currently active on the device.
+     * @param context The application context.
+     * @return `true` if a VPN is active, `false` otherwise.
+     */
     fun isVpnActive(context: Context): Boolean {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networks = connectivityManager.allNetworks
-
         for (network in networks) {
             val caps = connectivityManager.getNetworkCapabilities(network)
             if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
@@ -154,7 +190,6 @@ class MyVpnService : VpnService() {
         }
         return false
     }
-
 
     private fun startWatchdog() {
         watchdogJob?.cancel()
@@ -173,44 +208,37 @@ class MyVpnService : VpnService() {
     private fun forceKillVpnService() {
         try {
             Log.w(TAG, "Force killing VPN service")
-
-            nativeStopTunnel() // اول core Go رو ببند
-
+            nativeStopTunnel()
             if (tunDetachedFd >= 0) {
                 try { nativeCloseFd(tunDetachedFd) } catch (_: Throwable) {}
                 tunDetachedFd = -1
             }
-
             tunnelJob?.cancel()
             tunnelJob = null
-
             try { vpnInterface?.close() } catch (_: Throwable) {}
             vpnInterface = null
-
             V2rayManager.stop()
             stopForegroundCompat()
             notificationManager?.cancel(NOTIFICATION_ID)
-
             isServiceRunning.set(false)
             isStopInProgress.set(false)
-
-            // ❗ متوقف کردن JVM فرآیند Go (در صورتی که tun هنوز زندست)
             android.os.Process.killProcess(android.os.Process.myPid())
             System.exit(0)
-
         } catch (e: Throwable) {
             Log.e(TAG, "forceKillVpnService failed: ${e.message}", e)
         }
     }
 
-
+    /**
+     * Stops the VPN service gracefully.
+     * This method is idempotent and ensures that the stop process is not initiated multiple times.
+     */
     fun stopVpnService() {
         if (!isStopInProgress.compareAndSet(false, true)) return
         if (!isServiceRunning.compareAndSet(true, false)) {
             isStopInProgress.set(false)
             return
         }
-
         serviceScope.launch {
             try {
                 nativeStopTunnel()
@@ -231,7 +259,7 @@ class MyVpnService : VpnService() {
                 closeTunInterface()
                 val intent = Intent("UPDATE_BUTTON_STATES_ACTION")
                 sendBroadcast(intent)
-                stopSelf() // Ensure system releases VPN handle
+                stopSelf()
             } catch (e: Throwable) {
                 Log.e(TAG, "VPN stop error: ${e.message}", e)
             } finally {
@@ -261,7 +289,6 @@ class MyVpnService : VpnService() {
         super.onRevoke()
     }
 
-
     override fun onBind(intent: Intent?): IBinder? = null
 
     private suspend fun initializeV2Ray(configJson: String): Boolean = withContext(Dispatchers.IO) {
@@ -271,12 +298,11 @@ class MyVpnService : VpnService() {
         } catch (_: Throwable) { false }
     }
 
-    private suspend fun  setupVpnTunnel(): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun setupVpnTunnel(): Boolean = withContext(Dispatchers.IO) {
         try {
             val builder = Builder()
             val mtu = 1500
             val netIPv4Address = "10.0.0.2"
-
             builder.setSession("V2Ray VPN")
                 .setMtu(mtu)
                 .setBlocking(false)
@@ -284,18 +310,14 @@ class MyVpnService : VpnService() {
                 .addDnsServer("8.8.8.8")
                 .addDnsServer("1.1.1.1")
                 .addRoute("0.0.0.0", 0)
-
             try { builder.addDisallowedApplication(packageName) } catch (_: Throwable) {}
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(false)
-
             vpnInterface = builder.establish() ?: return@withContext false
             val dupPfd = ParcelFileDescriptor.dup(vpnInterface!!.fileDescriptor)
             tunDetachedFd = dupPfd.detachFd()
-
             val configYaml = buildHevConfigYaml(
                 mtu, netIPv4Address, "127.0.0.1", 10808, true
             )
-
             tunnelJob?.cancel()
             tunnelJob = serviceScope.launch {
                 nativeStartTunnel(configYaml, tunDetachedFd)
@@ -318,7 +340,7 @@ class MyVpnService : VpnService() {
         val channel = NotificationChannel(
             CHANNEL_ID, "V2Ray VPN Service", NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "اعلان سرویس VPN"
+            description = "VPN service notification"
             setShowBadge(false)
             enableLights(false)
             enableVibration(false)
@@ -334,21 +356,19 @@ class MyVpnService : VpnService() {
             this, 0, contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val stopIntent = Intent(this, MyVpnService::class.java).apply { action = ACTION_STOP_VPN }
         val stopPi = PendingIntent.getService(
             this, 1, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("V2Ray VPN فعال است")
-            .setContentText("اتصال شما ایمن و رمزگذاری شده است")
+            .setContentTitle("V2Ray VPN is active")
+            .setContentText("Your connection is secure and encrypted")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setOngoing(true)
             .setAutoCancel(false)
             .setContentIntent(contentPi)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "قطع اتصال", stopPi)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Disconnect", stopPi)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
@@ -370,7 +390,6 @@ class MyVpnService : VpnService() {
                 appendLine("  password: \"$password\"")
             }
         }.trimEnd()
-
         return """
             tunnel:
               name: tun0
