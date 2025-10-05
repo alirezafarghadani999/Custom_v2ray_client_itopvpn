@@ -18,21 +18,38 @@ import java.io.InputStream
 import java.net.URLDecoder
 import java.util.zip.CRC32
 
+/**
+ * A singleton object for managing the V2Ray core lifecycle and operations.
+ *
+ * This object is responsible for initializing, starting, and stopping the V2Ray core,
+ * handling geo asset files, converting VLESS URIs to JSON configuration, and
+ * performing ping tests.
+ */
 object V2rayManager {
 
     private var controller: CoreController? = null
     private var isRunning = false
-    private const val GEO_ASSETS_DIR = "geo" // Assuming geo files are in a 'geo' subfolder in assets
+    private const val GEO_ASSETS_DIR = "geo"
 
-    // فراخوانی برای آماده‌سازی اولیه محیط اجرای V2Ray
+    /**
+     * Initializes the V2Ray core environment.
+     * This must be called once before any other operations.
+     *
+     * @param context The application context, used to access file storage and assets.
+     */
     fun init(context: Context) {
         val corePath = context.filesDir.absolutePath
         Libv2ray.initCoreEnv(corePath, "")
-        controller = Libv2ray.newCoreController(SimpleCallbackHandler()) // ثابت شده: استفاده از متد کارخانه‌ای
-        copyAssetsIfNeeded(context) // کپی geoip و geosite فقط در صورت نیاز
+        controller = Libv2ray.newCoreController(SimpleCallbackHandler())
+        copyAssetsIfNeeded(context)
     }
 
-    // شروع هسته V2Ray با پیکربندی JSON
+    /**
+     * Starts the V2Ray core with a given JSON configuration.
+     *
+     * @param config The V2Ray configuration in JSON format.
+     * @return `true` if the core started successfully, `false` otherwise.
+     */
     fun start(config: String): Boolean {
         return try {
             controller?.startLoop(config)
@@ -45,7 +62,9 @@ object V2rayManager {
         }
     }
 
-    // توقف اجرای هسته
+    /**
+     * Stops the V2Ray core.
+     */
     fun stop() {
         try {
             controller?.stopLoop()
@@ -56,9 +75,13 @@ object V2rayManager {
         }
     }
 
+    /**
+     * Checks if the V2Ray core is currently running.
+     *
+     * @return `true` if the core is running, `false` otherwise.
+     */
     fun isRunning(): Boolean = isRunning
 
-    // کپی فایل‌های geoip و geosite از assets به فایل‌سیستم فقط اگر وجود نداشته باشند یا تغییر کرده باشند
     private fun copyAssetsIfNeeded(context: Context) {
         val assetManager: AssetManager = context.assets
         val filesDir: File = context.filesDir
@@ -72,7 +95,6 @@ object V2rayManager {
             if (!dir.exists()) dir.mkdirs()
 
             if (assets.isEmpty()) {
-                // It's a file, check if needs copying
                 val destinationFile = File(destinationDir, path)
                 if (shouldCopyAsset(assetManager, path, destinationFile)) {
                     copyFile(assetManager, path, destinationFile)
@@ -88,10 +110,8 @@ object V2rayManager {
         }
     }
 
-    // چک کردن اینکه آیا فایل نیاز به کپی دارد یا نه (بر اساس چک‌سام CRC32)
     private fun shouldCopyAsset(assetManager: AssetManager, assetPath: String, destinationFile: File): Boolean {
         if (!destinationFile.exists()) return true
-
         try {
             val assetInputStream: InputStream = assetManager.open(assetPath)
             val assetCrc = calculateCrc(assetInputStream)
@@ -104,7 +124,7 @@ object V2rayManager {
             return assetCrc != fileCrc
         } catch (e: IOException) {
             Log.e("V2rayManager", "CRC check failed: ${e.message}", e)
-            return true // در صورت خطا، کپی می‌کنیم
+            return true
         }
     }
 
@@ -121,8 +141,8 @@ object V2rayManager {
     private fun copyFile(assetManager: AssetManager, assetPath: String, destinationFile: File) {
         try {
             val inputStream: InputStream = assetManager.open(assetPath)
-            if (!destinationFile.parentFile.exists()) {
-                destinationFile.parentFile.mkdirs()
+            if (destinationFile.parentFile?.exists() == false) {
+                destinationFile.parentFile?.mkdirs()
             }
             val outputStream = FileOutputStream(destinationFile)
             inputStream.copyTo(outputStream)
@@ -134,38 +154,47 @@ object V2rayManager {
         }
     }
 
-    suspend fun pingConfig(config: String, url: String = "https://www.google.com"): Long { // تغییر outboundTag به url بر اساس مستندات کتابخانه
-        return withContext(Dispatchers.IO) { // اجرای عملیات در یک ترد پس‌زمینه
+    /**
+     * Measures the delay (ping) of a given V2Ray configuration.
+     *
+     * @param config The V2Ray configuration in JSON format.
+     * @param url The URL to test the delay against. Defaults to "https://www.google.com".
+     * @return The latency in milliseconds, or -1L on failure.
+     */
+    suspend fun pingConfig(config: String, url: String = "https://www.google.com"): Long {
+        return withContext(Dispatchers.IO) {
             try {
                 Libv2ray.measureOutboundDelay(config, url)
             } catch (e: Exception) {
                 Log.e("V2rayManager", "Ping test failed: ${e.message}", e)
-                -1L // در صورت بروز هرگونه خطا، -1 برگردانده می‌شود
+                -1L
             }
         }
     }
 
+    /**
+     * Converts a VLESS URI into a full V2Ray JSON configuration.
+     *
+     * @param vlessUri The VLESS configuration URI.
+     * @return A formatted JSON string representing the full configuration, or an empty string on failure.
+     */
     fun convertVlessUriToJsonOptimal(vlessUri: String?): String {
         try {
+            if (vlessUri.isNullOrBlank()) return ""
             val uri = Uri.parse(vlessUri)
-
             if (uri.scheme != "vless") return ""
 
-            // 1. استخراج اطلاعات پایه
             val uuid = uri.userInfo ?: return ""
             val address = uri.host ?: return ""
-            val port = uri.port.takeIf { it > 0 } ?: return "" // چک کردن پورت معتبر
+            val port = uri.port.takeIf { it > 0 } ?: return ""
             val remarks = uri.fragment?.let { URLDecoder.decode(it, "UTF-8") } ?: "VLESS Config"
 
-            // 2. استخراج پارامترهای Query با مدیریت null
             val params = uri.queryParameterNames.associateWith { uri.getQueryParameter(it) ?: "" }
-
             val network = params["type"] ?: "tcp"
             val security = params["security"] ?: "none"
             val encryption = params["encryption"] ?: "none"
             val flow = params["flow"] ?: ""
 
-            // 3. ساخت آبجکت vnext
             val vnextUser = JSONObject().apply {
                 put("id", uuid)
                 put("encryption", encryption)
@@ -177,60 +206,38 @@ object V2rayManager {
                 put("users", JSONArray().put(vnextUser))
             }
 
-            // 4. ساخت دینامیک آبجکت streamSettings
             val streamSettings = JSONObject().apply {
                 put("network", network)
                 put("security", security)
-
-                // تنظیمات بر اساس نوع شبکه (TCP, WebSocket, gRPC)
                 when (network) {
-                    "ws" -> {
-                        val wsSettings = JSONObject().apply {
-                            put("path", params["path"] ?: "/")
-                            val host = params["host"] ?: address
-                            put("headers", JSONObject().put("Host", host))
-                        }
-                        put("wsSettings", wsSettings)
-                    }
-                    "grpc" -> {
-                        val grpcSettings = JSONObject().apply {
-                            put("serviceName", params["serviceName"] ?: "")
-                            put("multiMode", params["mode"] == "multi")
-                        }
-                        put("grpcSettings", grpcSettings)
-                    }
-                    "tcp" -> {
-                        val headerType = params["headerType"]
-                        if (headerType != null && headerType != "none") {
-                            put("tcpSettings", JSONObject().put("header", JSONObject().put("type", headerType)))
-                        }
+                    "ws" -> put("wsSettings", JSONObject().apply {
+                        put("path", params["path"] ?: "/")
+                        put("headers", JSONObject().put("Host", params["host"] ?: address))
+                    })
+                    "grpc" -> put("grpcSettings", JSONObject().apply {
+                        put("serviceName", params["serviceName"] ?: "")
+                        put("multiMode", params["mode"] == "multi")
+                    })
+                    "tcp" -> params["headerType"]?.takeIf { it != "none" }?.let {
+                        put("tcpSettings", JSONObject().put("header", JSONObject().put("type", it)))
                     }
                 }
-
-                // تنظیمات بر اساس نوع امنیت (TLS, Reality)
                 when (security) {
-                    "tls" -> {
-                        val tlsSettings = JSONObject().apply {
-                            put("serverName", params["sni"] ?: address)
-                            put("allowInsecure", params["allowInsecure"]?.toBooleanStrictOrNull() ?: false)
-                            params["fp"]?.let { put("fingerprint", it) }
-                            params["alpn"]?.let { put("alpn", JSONArray(it.split(","))) }
-                        }
-                        put("tlsSettings", tlsSettings)
-                    }
-                    "reality" -> {
-                        val realitySettings = JSONObject().apply {
-                            put("serverName", params["sni"] ?: address)
-                            put("publicKey", params["pbk"] ?: "")
-                            params["fp"]?.let { put("fingerprint", it) }
-                            params["sid"]?.let { put("shortId", it) }
-                        }
-                        put("realitySettings", realitySettings)
-                    }
+                    "tls" -> put("tlsSettings", JSONObject().apply {
+                        put("serverName", params["sni"] ?: address)
+                        put("allowInsecure", params["allowInsecure"]?.toBooleanStrictOrNull() ?: false)
+                        params["fp"]?.let { put("fingerprint", it) }
+                        params["alpn"]?.let { put("alpn", JSONArray(it.split(","))) }
+                    })
+                    "reality" -> put("realitySettings", JSONObject().apply {
+                        put("serverName", params["sni"] ?: address)
+                        put("publicKey", params["pbk"] ?: "")
+                        params["fp"]?.let { put("fingerprint", it) }
+                        params["sid"]?.let { put("shortId", it) }
+                    })
                 }
             }
 
-            // 5. ساخت آبجکت اصلی Outbound
             val proxyOutbound = JSONObject().apply {
                 put("tag", "proxy")
                 put("protocol", "vless")
@@ -238,7 +245,6 @@ object V2rayManager {
                 put("streamSettings", streamSettings)
             }
 
-            // 6. ساخت ساختار کامل JSON
             val fullConfig = JSONObject().apply {
                 put("log", JSONObject().put("loglevel", "warning"))
                 put("inbounds", JSONArray().put(JSONObject().apply {
@@ -255,33 +261,31 @@ object V2rayManager {
                     .put(JSONObject().put("tag", "block").put("protocol", "blackhole"))
                 )
             }
-
             return fullConfig.toString(4)
-
         } catch (e: Exception) {
             Log.e("V2rayManager", "Failed to convert VLESS URI: ${e.message}", e)
             return ""
         }
     }
 
-    // پیاده‌سازی ساده‌ی CallbackHandler برای دریافت لاگ و آمار از V2Ray
+    /**
+     * A simple implementation of [CoreCallbackHandler] to receive logs and status
+     * updates from the V2Ray core.
+     */
     class SimpleCallbackHandler : CoreCallbackHandler {
-
         override fun onEmitStatus(p0: Long, p1: String?): Long {
-            p1?.let { Log.d("V2rayCallback", "[$p0] $it") } // تغییر به Log.d برای لاگ‌های وضعیت
+            p1?.let { Log.d("V2rayCallback", "[$p0] $it") }
             return 0
         }
 
         override fun shutdown(): Long {
             Log.d("V2rayCallback", "V2Ray core shutdown successfully")
             return 0
-
         }
 
         override fun startup(): Long {
             Log.d("V2rayCallback", "V2Ray core started successfully")
             return 0
-
         }
     }
 }
